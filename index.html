@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picking Game - Tesco Store Simulator</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --panel: #ffffff;
+    --border: #d1d5db;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --brand: #00539f;
+    --brand-dark: #003a6e;
+    --accent: #ee2d24;
+    --ok: #15803d;
+    --warn: #b45309;
+    --amber: #f59e0b;
+    --amber-bg: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header.topbar {
+    background: var(--brand);
+    color: #fff;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  header.topbar h1 { font-size: 20px; margin: 0; }
+  .stat { font-size: 14px; }
+  .stat b { margin-left: 4px; }
+  .timer { font-family: Consolas, monospace; font-size: 22px; font-weight: 700; margin-left: auto; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .center-box {
+    max-width: 760px;
+    margin: 60px auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px 40px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  .center-box h2 { margin-top: 0; color: var(--brand-dark); }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+  .field input[type=text], .field input[type=number] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 16px;
+  }
+  .field input:focus { outline: 2px solid var(--brand); border-color: transparent; }
+  .level-hint { font-size: 14px; color: var(--muted); min-height: 20px; }
+  .level-hint b { color: var(--brand-dark); }
+  .error { color: var(--accent); font-size: 14px; min-height: 20px; margin-bottom: 10px; }
+  .btn {
+    background: var(--brand);
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--brand-dark); }
+  .btn.secondary { background: #e5e7eb; color: var(--text); }
+  .btn.secondary:hover { background: #d1d5db; }
+  .btn.danger { background: var(--accent); }
+  .btn.danger:hover { background: #b91c1c; }
+  .btn.small { font-size: 13px; padding: 6px 12px; }
+  .linklike { background: none; border: none; color: var(--brand); cursor: pointer; font-size: 14px; text-decoration: underline; padding: 0; }
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    gap: 14px;
+    padding: 14px;
+    align-items: start;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .panel h3 { margin: 0 0 10px; font-size: 15px; color: var(--brand-dark); }
+  .order-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .order-line:nth-child(odd) { background: #f9fafb; }
+  .order-line.done { color: var(--ok); }
+  .order-line.bad { background: #fee2e2; color: #b91c1c; }
+  .order-line .qty { font-weight: 700; }
+  .order-line .qty.filled { color: var(--ok); }
+  .order-line .check { margin-left: 6px; }
+  .store {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  .aisle {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+  }
+  .aisle h4 { margin: 0 0 6px; text-align: center; font-size: 13px; color: var(--brand-dark); background: #e0ecfa; border-radius: 4px; padding: 3px 0; }
+  .units { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .unit { display: flex; flex-direction: column; gap: 5px; }
+  .shelf-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    cursor: pointer;
+    user-select: none;
+    transition: background .1s;
+  }
+  .shelf-card:hover { background: #e0ecfa; }
+  .shelf-card.ordered { border-color: var(--amber); background: var(--amber-bg); }
+  .shelf-card .name { font-weight: 600; }
+  .shelf-card .stock { color: var(--muted); }
+  .shelf-card.empty { visibility: hidden; }
+  .cart-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #fff;
+  }
+  .cart-line:hover { background: #fee2e2; border-color: #fca5a5; }
+  .cart-line .cname { font-weight: 600; }
+  .cart-line .cqty { font-weight: 700; color: var(--brand-dark); }
+  .cart-line.not-on-order { background: #fee2e2; border-style: solid; border-color: #fca5a5; }
+  .cart-line.not-on-order .cname { color: #b91c1c; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .submit-area { margin-top: 12px; }
+  .message { font-size: 13px; margin-bottom: 8px; min-height: 18px; }
+  .message.bad { color: #b91c1c; font-weight: 600; }
+  .message.ok { color: var(--ok); }
+  .results-summary { display: flex; gap: 26px; flex-wrap: wrap; margin: 8px 0 20px; }
+  .results-summary .rs { font-size: 14px; }
+  .results-summary .rs b { display: block; font-size: 24px; color: var(--brand-dark); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:hover td { background: #f9fafb; }
+  .rank-first td { background: #fef9c3; }
+  .lb-toolbar { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .lb-toolbar select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; }
+  .empty-note { color: var(--muted); font-size: 14px; text-align: center; padding: 20px; }
+  .modal-wrap {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal-wrap.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 10px; padding: 24px; width: 100%;
+    max-width: 680px; max-height: 90vh; overflow: auto;
+  }
+  .modal h3 { margin-top: 0; color: var(--brand-dark); }
+  .picked-chip { color: var(--ok); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Tesco Picking Simulator</h1>
+  <span class="stat">Picking for:<b id="topName">-</b></span>
+  <span class="stat">Level<b id="topLevel">-</b></span>
+  <span class="stat">Items<b id="topItems">-</b></span>
+  <span class="timer" id="topTimer">00:00.0</span>
+  <button class="btn secondary small" id="abandonBtn">Restart</button>
+</header>
+
+<section id="screenStart" class="screen active">
+  <div class="center-box">
+    <h2>Start a picking shift</h2>
+    <div class="error" id="startError"></div>
+    <div class="field">
+      <label for="nameInput">Your name</label>
+      <input type="text" id="nameInput" maxlength="24" placeholder="e.g. Alex" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="countInput">Number of items to pick (6 to 49)</label>
+      <input type="number" id="countInput" min="6" max="49" step="1" value="10">
+    </div>
+    <div class="level-hint" id="levelHint">Level: <b>-</b></div>
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn" id="startBtn">Start picking</button>
+      <button class="btn secondary" id="viewLbBtn">View leaderboard</button>
+    </div>
+  </div>
+</section>
+
+<section id="screenStore" class="screen">
+  <div id="storeLayout" class="layout">
+    <div class="panel" id="orderPanel">
+      <h3>Your picking list</h3>
+      <div id="orderList"></div>
+    </div>
+    <div class="panel">
+      <h3>The store</h3>
+      <div class="store" id="storeGrid"></div>
+      <p class="hint">Click an item on a shelf to add 1 unit to your cart.</p>
+    </div>
+    <div class="panel" id="cartPanel">
+      <h3>Your trolley</h3>
+      <div id="cartList"></div>
+      <div class="hint">Double-click a trolley item to put it back on the shelf.</div>
+      <div class="submit-area">
+        <div class="message" id="submitMsg"></div>
+        <button class="btn" id="submitBtn">Add to bag &amp; submit</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screenResults" class="screen">
+  <div class="center-box">
+    <h2>Order bagged!</h2>
+    <div class="results-summary">
+      <div class="rs"><b id="resName">-</b>Picked by</div>
+      <div class="rs"><b id="resLevel">-</b>Level</div>
+      <div class="rs"><b id="resItems">-</b>Items</div>
+      <div class="rs"><b id="resTime">-</b>Time taken</div>
+    </div>
+    <div class="lb-toolbar">
+      <h3 style="margin:0; color:var(--brand-dark);">Leaderboard</h3>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="font-size:13px; color:var(--muted);">Level <select id="lbFilterRes"><option value="all">All</option></select></label>
+        <button class="btn secondary small" id="clearLbRes">Clear</button>
+      </div>
+    </div>
+    <div id="lbTableRes"></div>
+    <div style="margin-top:20px; display:flex; gap:10px;">
+      <button class="btn" id="playAgainBtn">Play again</button>
+      <button class="btn secondary" id="restartBtn">Back to start</button>
+    </div>
+  </div>
+</section>
+
+<div class="modal-wrap" id="lbModal">
+  <div class="modal">
+    <h3>Leaderboard</h3>
+    <div class="lb-toolbar">
+      <label style="font-size:13px; color:var(--muted);">Level <select id="lbFilterModal"><option value="all">All</option></select></label>
+      <div style="display:flex; gap:10px;">
+        <button class="btn secondary small" id="clearLbModal">Clear</button>
+        <button class="btn secondary small" id="closeLbBtn">Close</button>
+      </div>
+    </div>
+    <div id="lbTableModal"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const CATALOG = [
+    "Ambrosia Rice Pudding",
+    "Andrex Toilet Rolls",
+    "Batchelors Super Noodles",
+    "Birds Eye Garden Peas",
+    "Coco Pops",
+    "Colgate Toothpaste",
+    "Colmans English Mustard",
+    "Dairy Milk Chocolate",
+    "Dettol Disinfectant",
+    "Dolmio Bolognese Sauce",
+    "Dr Pepper",
+    "Fairy Washing Up Liquid",
+    "Flora Buttery",
+    "Green Giant Sweetcorn",
+    "Heinz Baked Beans",
+    "Heinz Ketchup",
+    "Heinz Tomato Soup",
+    "Hellmanns Mayonnaise",
+    "Hobnobs",
+    "Hovis Wholemeal Bread",
+    "Irn-Bru",
+    "Jaffa Cakes",
+    "John West Tuna Chunks",
+    "Kelloggs Corn Flakes",
+    "Kit Kat 4 Finger",
+    "Lucozade Orange",
+    "Lurpak Butter",
+    "Lyles Golden Syrup",
+    "Magnum Classic",
+    "Marmite",
+    "McCain Oven Chips",
+    "McVities Digestives",
+    "Mr Kipling Bakewell Slices",
+    "Nescafe Gold Blend",
+    "Nutella",
+    "Oatly Oat Milk",
+    "Original Source Shower Gel",
+    "Persil Non-Bio",
+    "PG Tips Tea Bags",
+    "Philadelphia Soft Cheese",
+    "Pringles Original",
+    "Quaker Oat So Simple",
+    "Ribena Blackcurrant",
+    "Robinsons Orange Squash",
+    "San Pellegrino",
+    "Smash Instant Mash",
+    "Soreen Malt Loaf",
+    "Tango Orange",
+    "Tunnocks Caramel Wafers",
+    "Weetabix"
+  ];
+
+  const AISLE_NAMES = ["A", "B", "C", "D", "E"];
+  const SHELVES_PER_UNIT = 5;
+  const UNITS_PER_AISLE = 2;
+  const INITIAL_STOCK = 20;
+  const STORAGE_KEY = "pickingGameLeaderboard";
+
+  const $ = function (id) { return document.getElementById(id); };
+
+  function levelFor(n) {
+    if (n <= 14) return 1;
+    if (n <= 23) return 2;
+    if (n <= 32) return 3;
+    if (n <= 41) return 4;
+    return 5;
+  }
+
+  const sortedNames = CATALOG.slice().sort(function (a, b) { return a.localeCompare(b); });
+
+  let slots = [];
+  (function buildSlots() {
+    let idx = 0;
+    for (let a = 0; a < 5; a++) {
+      for (let u = 0; u < UNITS_PER_AISLE; u++) {
+        for (let l = 0; l < SHELVES_PER_UNIT; l++) {
+          slots.push({
+            id: idx,
+            name: sortedNames[idx] || null,
+            aisle: a,
+            unit: u,
+            level: l,
+            stock: INITIAL_STOCK
+          });
+          idx++;
+        }
+      }
+    }
+  })();
+
+  const state = {
+    screen: "start",
+    name: "",
+    count: 6,
+    order: [],
+    orderMap: null,
+    cart: {},
+    startTime: 0,
+    timerHandle: null,
+    submitted: false
+  };
+
+  function fmtTime(ms) {
+    const total = Math.max(0, ms);
+    const m = Math.floor(total / 60000);
+    const s = Math.floor((total % 60000) / 1000);
+    const ds = Math.floor((total % 1000) / 100);
+    const pad = function (x) { return String(x).padStart(2, "0"); };
+    return pad(m) + ":" + pad(s) + "." + ds;
+  }
+
+  function fmtTimeFull(ms) {
+    const total = Math.max(0, ms);
+    const m = Math.floor(total / 60000);
+    const s = Math.floor((total % 60000) / 1000);
+    const c = Math.floor((total % 1000) / 10);
+    const pad = function (x) { return String(x).padStart(2, "0"); };
+    return pad(m) + ":" + pad(s) + "." + pad(c);
+  }
+
+  function fmtDate(d) {
+    const pad = function (x) { return String(x).padStart(2, "0"); };
+    return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() +
+      " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function collectLeaderboard() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveLeaderboard(list) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  function loadLeaderboard() {
+    return collectLeaderboard().sort(function (a, b) { return a.timeMs - b.timeMs; });
+  }
+
+  function addEntry(entry) {
+    const list = collectLeaderboard();
+    list.push(entry);
+    list.sort(function (a, b) { return a.timeMs - b.timeMs; });
+    saveLeaderboard(list.slice(0, 100));
+  }
+
+  function badge(label, cls) {
+    return '<span class="' + cls + '">' + label + "</span>";
+  }
+
+  function orderStatusFor(itemId) {
+    const oi = state.orderMap.get(itemId);
+    if (!oi) return null;
+    return { need: oi.qty, picked: oi.picked, done: oi.picked === oi.qty };
+  }
+
+  function renderLeaderboard(container, filterEl) {
+    const list = loadLeaderboard();
+    const filter = filterEl.value;
+    let html = "";
+    if (!list.length) {
+      html = '<div class="empty-note">No scores yet. Finish a picking run to appear here.</div>';
+    } else {
+      html = '<table><thead><tr><th>#</th><th>Name</th><th>Level</th><th>Items</th><th>Time</th><th>Date</th></tr></thead><tbody>';
+      let rank = 1;
+      list.forEach(function (e) {
+        if (filter !== "all" && String(e.level) !== filter) return;
+        const cls = rank === 1 ? ' class="rank-first"' : "";
+        html += "<tr" + cls + "><td>" + rank + "</td><td>" + escapeHtml(e.name) + "</td><td>L" + e.level + "</td><td>" + e.items + "</td><td>" + fmtTimeFull(e.timeMs) + "</td><td>" + e.date + "</td></tr>";
+        rank++;
+      });
+      html += "</tbody></table>";
+    }
+    container.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderStore() {
+    let html = "";
+    for (let a = 0; a < 5; a++) {
+      html += '<div class="aisle"><h4>Aisle ' + AISLE_NAMES[a] + "</h4><div class=\"units\">";
+      for (let u = 0; u < UNITS_PER_AISLE; u++) {
+        html += '<div class="unit">';
+        for (let l = 0; l < SHELVES_PER_UNIT; l++) {
+          const slot = slots.find(function (s) { return s.aisle === a && s.unit === u && s.level === l; });
+          if (!slot || !slot.name) { html += '<div class="shelf-card empty"></div>'; continue; }
+          const st = orderStatusFor(slot.id);
+          const cls = st ? ' class="shelf-card ordered"' : ' class="shelf-card"';
+          html += '<div' + cls + ' data-id="' + slot.id + '"><div class="name">' + escapeHtml(slot.name) + '</div><div class="stock">stock: ' + slot.stock + "</div></div>";
+        }
+        html += "</div>";
+      }
+      html += "</div></div>";
+    }
+    $("storeGrid").innerHTML = html;
+  }
+
+  function renderOrder() {
+    let html = "";
+    state.order.forEach(function (oi) {
+      const filled = oi.picked >= oi.qty;
+      const over = oi.picked > oi.qty;
+      const cls = over ? "order-line bad" : (filled ? "order-line done" : "order-line");
+      const check = filled ? badge("&#10003;", "check") : "";
+      html += '<div class="order-line' + (over ? " bad" : filled ? " done" : "") + '">' +
+        '<span>' + escapeHtml(oi.name) + "</span>" +
+        '<span class="qty' + (filled ? " filled" : "") + '">' + oi.picked + "/" + oi.qty + "</span>" + check + "</div>";
+    });
+    $("orderList").innerHTML = html;
+  }
+
+  function renderCart() {
+    const ids = Object.keys(state.cart).map(Number).filter(function (id) { return state.cart[id] > 0; });
+    ids.sort(function (a, b) { return a - b; });
+    let html = "";
+    if (!ids.length) {
+      html = '<div class="empty-note" style="padding:10px;">Trolley is empty.</div>';
+    } else {
+      ids.forEach(function (id) {
+        const slot = slots.find(function (s) { return s.id === id; });
+        const st = orderStatusFor(id);
+        const notOnOrder = !st;
+        const cls = notOnOrder ? "cart-line not-on-order" : "cart-line";
+        html += '<div class="' + cls + '" data-id="' + id + '"><span class="cname">' + escapeHtml(slot.name) + (notOnOrder ? " (not on order)" : "") + "</span>" +
+          '<span class="cqty">x' + state.cart[id] + "</span></div>";
+      });
+    }
+    $("cartList").innerHTML = html;
+    $("submitMsg").innerHTML = "";
+  }
+
+  function render() {
+    renderStore();
+    renderOrder();
+    renderCart();
+  }
+
+  function validateOrder() {
+    const wrongExtra = [];
+    const wrongQty = [];
+    state.order.forEach(function (oi) {
+      if (state.cart[oi.id] !== oi.qty) wrongQty.push(oi.name);
+    });
+    Object.keys(state.cart).forEach(function (id) {
+      if (!state.orderMap.has(Number(id))) wrongExtra.push(escapeHtml(slots.find(function (s) { return s.id === Number(id); }).name));
+    });
+    return { ok: !wrongExtra.length && !wrongQty.length, wrongExtra: wrongExtra, wrongQty: wrongQty };
+  }
+
+  function startGame() {
+    const name = $("nameInput").value.trim();
+    const count = parseInt($("countInput").value, 10);
+    if (!name) { $("startError").textContent = "Please enter your name."; return; }
+    if (isNaN(count) || count < 6 || count > 49) { $("startError").textContent = "Item count must be between 6 and 49."; return; }
+    $("startError").textContent = "";
+
+    state.name = name;
+    state.count = count;
+    state.level = levelFor(count);
+    state.cart = {};
+    state.submitted = false;
+    state.orderMap = new Map();
+
+    const picked = shuffle(slots.filter(function (s) { return s.name; })).slice(0, count);
+    state.order = picked.map(function (slot) {
+      const item = { id: slot.id, name: slot.name, qty: 1 + Math.floor(Math.random() * 5), picked: 0 };
+      state.orderMap.set(slot.id, item);
+      return item;
+    });
+
+    slots.forEach(function (s) { s.stock = INITIAL_STOCK; });
+
+    $("topName").textContent = name;
+    $("topLevel").textContent = "L" + state.level;
+    $("topItems").textContent = count;
+    $("topTimer").textContent = "00:00.0";
+
+    showScreen("store");
+    render();
+
+    state.startTime = Date.now();
+    clearInterval(state.timerHandle);
+    state.timerHandle = setInterval(function () {
+      if (!state.submitted) $("topTimer").textContent = fmtTime(Date.now() - state.startTime);
+    }, 100);
+  }
+
+  function cartHas(id) {
+    return state.cart[id] > 0;
+  }
+
+  $("storeGrid").addEventListener("click", function (ev) {
+    if (state.screen !== "store" || state.submitted) return;
+    const card = ev.target.closest(".shelf-card");
+    if (!card || card.classList.contains("empty")) return;
+    const id = Number(card.dataset.id);
+    const slot = slots.find(function (s) { return s.id === id; });
+    if (slot.stock <= 0) return;
+    slot.stock--;
+    state.cart[id] = (state.cart[id] || 0) + 1;
+    const oi = state.orderMap.get(id);
+    if (oi) oi.picked++;
+    render();
+  });
+
+  $("cartList").addEventListener("dblclick", function (ev) {
+    if (state.screen !== "store" || state.submitted) return;
+    const line = ev.target.closest(".cart-line");
+    if (!line) return;
+    const id = Number(line.dataset.id);
+    if (!cartHas(id)) return;
+    state.cart[id]--;
+    if (state.cart[id] <= 0) delete state.cart[id];
+    const slot = slots.find(function (s) { return s.id === id; });
+    slot.stock++;
+    const oi = state.orderMap.get(id);
+    if (oi && oi.picked > 0) oi.picked--;
+    render();
+  });
+
+  $("submitBtn").addEventListener("click", function () {
+    if (state.screen !== "store" || state.submitted) return;
+    const res = validateOrder();
+    const msg = $("submitMsg");
+    if (!res.ok) {
+      const parts = [];
+      if (res.wrongExtra.length) parts.push("Not on order: " + res.wrongExtra.join(", "));
+      if (res.wrongQty.length) parts.push("Wrong quantities: " + res.wrongQty.join(", "));
+      msg.className = "message bad";
+      msg.textContent = "Cannot submit. " + parts.join(" | ");
+      return;
+    }
+    state.submitted = true;
+    clearInterval(state.timerHandle);
+    const elapsed = Date.now() - state.startTime;
+
+    const entry = {
+      name: state.name,
+      level: state.level,
+      items: state.count,
+      timeMs: elapsed,
+      date: fmtDate(new Date())
+    };
+    addEntry(entry);
+
+    $("resName").textContent = state.name;
+    $("resLevel").textContent = "L" + state.level;
+    $("resItems").textContent = state.count;
+    $("resTime").textContent = fmtTimeFull(elapsed);
+
+    populateFilter($("lbFilterRes"));
+    renderLeaderboard($("lbTableRes"), $("lbFilterRes"));
+    showScreen("results");
+  });
+
+  function showScreen(name) {
+    state.screen = name;
+    ["start", "store", "results"].forEach(function (s) {
+      $("screen" + s.charAt(0).toUpperCase() + s.slice(1)).classList.toggle("active", s === name);
+    });
+  }
+
+  function updateLevelHint() {
+    const n = parseInt($("countInput").value, 10);
+    if (!isNaN(n) && n >= 6 && n <= 49) {
+      $("levelHint").innerHTML = "Level: <b>L" + levelFor(n) + "</b> (" + n + " items)";
+    } else {
+      $("levelHint").innerHTML = "Level: <b>-</b> (enter 6 to 49 items)";
+    }
+  }
+  $("countInput").addEventListener("input", updateLevelHint);
+
+  $("startBtn").addEventListener("click", startGame);
+  $("nameInput").addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") $("countInput").focus();
+  });
+  $("countInput").addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") startGame();
+  });
+
+  function resetTopbar() {
+    $("topName").textContent = "-";
+    $("topLevel").textContent = "-";
+    $("topItems").textContent = "-";
+    $("topTimer").textContent = "00:00.0";
+  }
+
+  $("abandonBtn").addEventListener("click", function () {
+    if (state.screen !== "store") return;
+    clearInterval(state.timerHandle);
+    resetTopbar();
+    showScreen("start");
+  });
+
+  $("playAgainBtn").addEventListener("click", function () {
+    resetTopbar();
+    showScreen("start");
+  });
+
+  $("restartBtn").addEventListener("click", function () {
+    resetTopbar();
+    showScreen("start");
+  });
+
+  function populateFilter(sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="all">All</option>';
+    for (let i = 1; i <= 5; i++) sel.innerHTML += '<option value="' + i + '">Level ' + i + "</option>";
+    sel.value = cur;
+  }
+
+  $("lbFilterRes").addEventListener("change", function () {
+    renderLeaderboard($("lbTableRes"), $("lbFilterRes"));
+  });
+  $("lbFilterModal").addEventListener("change", function () {
+    renderLeaderboard($("lbTableModal"), $("lbFilterModal"));
+  });
+
+  [["lbFilterRes", "clearLbRes"], ["lbFilterModal", "clearLbModal"]].forEach(function (pair) {
+    $(pair[1]).addEventListener("click", function () {
+      if (confirm("Clear the entire leaderboard?")) {
+        saveLeaderboard([]);
+        renderLeaderboard($("lbTableRes"), $("lbFilterRes"));
+        renderLeaderboard($("lbTableModal"), $("lbFilterModal"));
+      }
+    });
+  });
+
+  $("closeLbBtn").addEventListener("click", function () { $("lbModal").classList.remove("show"); });
+  $("viewLbBtn").addEventListener("click", function () {
+    populateFilter($("lbFilterModal"));
+    renderLeaderboard($("lbTableModal"), $("lbFilterModal"));
+    $("lbModal").classList.add("show");
+  });
+
+  updateLevelHint();
+})();
+</script>
+</body>
+</html>
